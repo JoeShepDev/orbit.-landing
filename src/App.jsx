@@ -1,7 +1,15 @@
 import './App.css'
+
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Text, Stars } from '@react-three/drei'
 import { useRef, useState, useEffect } from 'react'
+
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
 
 function OrbitingDevice({angle, phase, flaggedIndex, index})
 {
@@ -53,6 +61,17 @@ function LandingPage() {
 
   const [phase, setPhase] = useState('explosion')
   const [flaggedIndex] = useState(Math.floor(Math.random() * 5))
+
+  const [email, setEmail] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  const handleSubmit = async () => {
+    if (!email) return
+
+    const { error } = await supabase.from('waitlist').insert([{ email }])
+
+    if (!error) setSubmitted(true)
+  }
   
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('flagged'), 1500)
@@ -87,8 +106,15 @@ function LandingPage() {
         <p>Orbit. is an app that allows you to have better piece of mind about your surroundings. whether you're hyper-aware or oblivous Orbit.
           keeps you safe and prevents accidents <em>before</em> they happen. Curious about using the app yourself? Then sign up for our waitlist below...
         </p>
-        <input placeholder='johndoe@email.com'></input>
-        <button>Join The Waitlist</button>
+        <input 
+          placeholder='johndoe@email.com'
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        {submitted 
+          ? <p>you're on the list.</p>
+          : <button onClick={handleSubmit}>Join The Waitlist</button>
+        }
       </div>
     </div>
   )
