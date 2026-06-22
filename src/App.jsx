@@ -103,7 +103,7 @@ function LandingPage() {
 
       <div className='waitlist-section'>
         <h2>Know Who's Around You</h2>
-        <p>Orbit. is an app that allows you to have better piece of mind about your surroundings. whether you're hyper-aware or oblivous Orbit.
+        <p>Orbit. is an app that allows you to have better piece of mind about your surroundings. whether you're hyper-aware or oblivous, Orbit.
           keeps you safe and prevents accidents <em>before</em> they happen. Curious about using the app yourself? Then sign up for our waitlist below...
         </p>
         <input 
