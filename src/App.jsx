@@ -1,5 +1,4 @@
 import './App.css'
-
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Text, Stars } from '@react-three/drei'
 import { useRef, useState, useEffect } from 'react'
@@ -8,6 +7,7 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
 {
   const smallPlanet = useRef()
   const radiusRef = useRef(2)
+  
   useFrame((state) => {
 
     const isFlag = phase === 'flagged' && index === flaggedIndex
@@ -18,9 +18,8 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
     smallPlanet.current.position.x = radiusRef.current * Math.cos(angle + state.clock.elapsedTime)
     smallPlanet.current.position.z = radiusRef.current * Math.sin(angle + state.clock.elapsedTime)
 
-    smallPlanet.current.material.color.set(isFlag ? '#fb0000' : '#b1b1b1')
+    smallPlanet.current.material.color.set(isFlag ? '#ff0000' : '#b1b1b1')
   })
-
   return (
     <mesh ref={smallPlanet}>
       <sphereGeometry args={[0.1, 16, 16]} />
@@ -29,34 +28,35 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
   )
 }
 
-function OrbitText()
+function OrbitText({phase})
 {
   const orbitText = useRef()
 
-  useFrame((state, deltaTime)=> {
-    orbitText.current.outlineOpacity = 0.3 + Math.sin(state.clock.elapsedTime * 0.8) * 0.7
+  useFrame((state) => {
+    orbitText.current.outlineOpacity = 0.1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.7
   })
 
   return(
-    <Text position={[0, 0, 0]} 
-          fontSize={1} 
+    <Text position={[0, 0, 0]}
           color="white"
           fillOpacity={1}
           outlineWidth={0.02}
           outlineColor="#ffffff"
-          ref={orbitText}>Orbit.</Text>
+          fontSize={phase === 'flagged' ? 0.3 : 1}
+          ref={orbitText}>
+      {phase === 'flagged' ? 'device flagged.' : 'Orbit.'}
+    </Text>
   )
 }
 
 function LandingPage() {
+
   const [phase, setPhase] = useState('explosion')
   const [flaggedIndex] = useState(Math.floor(Math.random() * 5))
-
+  
   useEffect(() => {
     const t1 = setTimeout(() => setPhase('flagged'), 1500)
     const t2 = setTimeout(() => setPhase('settle'), 5000)
-    
-
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
@@ -65,27 +65,31 @@ function LandingPage() {
 
   return (
     <div className="main-section">
-
+      
       <div className='canvas-section'>
+
         <Canvas>
           <ambientLight intensity={0.3} />
-
-          <pointLight 
-              position={[3, 3, 3]} 
-              intensity={50} 
-              color="#cdcdcd" />
-
+          <pointLight position={[3, 3, 3]} intensity={50} color="#cdcdcd" />
           <Stars />
-
-          <OrbitText />
+          <OrbitText phase={phase}/>
           <OrbitingDevice angle={0} phase={phase} flaggedIndex={flaggedIndex} index={0}/>
           <OrbitingDevice angle={Math.PI * 2 / 5} phase={phase} flaggedIndex={flaggedIndex} index={1}/>
           <OrbitingDevice angle={Math.PI * 4 / 5} phase={phase} flaggedIndex={flaggedIndex} index={2}/>
           <OrbitingDevice angle={Math.PI * 6 / 5} phase={phase} flaggedIndex={flaggedIndex} index={3}/>
           <OrbitingDevice angle={Math.PI * 8 / 5} phase={phase} flaggedIndex={flaggedIndex} index={4}/>
         </Canvas>
+
       </div>
 
+      <div className='waitlist-section'>
+        <h2>Know Who's Around You</h2>
+        <p>Orbit. is an app that allows you to have better piece of mind about your surroundings. whether you're hyper-aware or oblivous Orbit.
+          keeps you safe and prevents accidents <em>before</em> they happen. Curious about using the app yourself? Then sign up for our waitlist below...
+        </p>
+        <input placeholder='johndoe@email.com'></input>
+        <button>Join The Waitlist</button>
+      </div>
     </div>
   )
 }
