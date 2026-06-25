@@ -25,7 +25,7 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
 
     radiusRef.current = MathUtils.damp(radiusRef.current, target, 3, delta)
 
-    const yTarget = phase === 'diagonal' ? Math.sin(angle + state.clock.elapsedTime) * 0.8 * Math.cos(angle) : 0
+    const yTarget = phase === 'diagonal' ? Math.sin(angle + state.clock.elapsedTime) * 0.5 * Math.cos(angle) : 0
     yRef.current = MathUtils.damp(yRef.current, yTarget, 1.5, delta)
 
     smallPlanet.current.position.x = radiusRef.current * Math.cos(angle + state.clock.elapsedTime)
