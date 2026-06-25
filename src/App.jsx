@@ -1,31 +1,31 @@
 import './App.css'
 
-import { Canvas, useFrame } from '@react-three/fiber'
-import { OrbitControls, Text, Stars } from '@react-three/drei'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { Text, Stars } from '@react-three/drei'
 import { useRef, useState, useEffect } from 'react'
-import { MathUtils } from 'three'
-
 import { createClient } from '@supabase/supabase-js'
+import { MathUtils, Vector3 } from 'three'
 
 const supabase = createClient(
   import.meta.env.VITE_SUPABASE_URL,
   import.meta.env.VITE_SUPABASE_ANON_KEY
 )
 
-function OrbitingDevice({angle, phase, flaggedIndex, index})
-{
+function OrbitingDevice({ angle, phase, flaggedIndex, index }) {
   const smallPlanet = useRef()
-  const radiusRef = useRef(2)
+  const radiusRef = useRef(0.1)
   const yRef = useRef(0)
-  const yVelRef = useRef(0)
 
   useFrame((state, delta) => {
     const isFlag = phase === 'flagged' && index === flaggedIndex
-    const target = isFlag ? 3 : 2
+    const isReturn = phase === 'return' && index === flaggedIndex
 
-    radiusRef.current = MathUtils.damp(radiusRef.current, target, 3, delta)
+    const targetRadius = phase === 'explosion' ? 0.1 : isFlag ? 3 : 2
+    radiusRef.current = MathUtils.damp(radiusRef.current, targetRadius, 2, delta)
 
-    const yTarget = phase === 'diagonal' ? Math.sin(angle + state.clock.elapsedTime) * 0.5 * Math.cos(angle) : 0
+    const yTarget = phase === 'diagonal'
+      ? Math.sin(angle + state.clock.elapsedTime) * 0.8 * Math.cos(angle)
+      : 0
     yRef.current = MathUtils.damp(yRef.current, yTarget, 1.5, delta)
 
     smallPlanet.current.position.x = radiusRef.current * Math.cos(angle + state.clock.elapsedTime)
@@ -39,56 +39,85 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
   return (
     <mesh ref={smallPlanet}>
       <sphereGeometry args={[0.1, 16, 16]} />
-      <meshToonMaterial color={"#b1b1b1"} />
+      <meshToonMaterial color="#b1b1b1" />
     </mesh>
   )
 }
 
-function OrbitText({phase})
-{
+function OrbitText({ phase }) {
   const orbitText = useRef()
+  const opacityRef = useRef(0)
 
-  useFrame((state) => {
-    orbitText.current.outlineOpacity = 0.1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.7
+  useFrame((state, delta) => {
+    if (!orbitText.current) return
+
+    const targetOpacity = phase === 'explosion' ? 0 : 1
+    opacityRef.current = MathUtils.damp(opacityRef.current, targetOpacity, 2, delta)
+    orbitText.current.fillOpacity = opacityRef.current
+    orbitText.current.outlineOpacity = (0.1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.7) * opacityRef.current
   })
 
-  return(
-    <Text position={[0, 0, 0]}
-          color="white"
-          fillOpacity={1}
-          outlineWidth={0.02}
-          outlineColor="#ffffff"
-          fontSize={phase === 'flagged' ? 0.3 : 1}
-          ref={orbitText}>
-      {phase === 'flagged' ? 'device flagged.' : 'Orbit.'}
+  return (
+    <Text
+      position={[0, 0, 0]}
+      color="white"
+      fillOpacity={0}
+      outlineWidth={0.02}
+      outlineColor="#ffffff"
+      fontSize={phase === 'flagged' ? 0.3 : 1}
+      ref={orbitText}
+    >
+      {phase === 'flagged' || phase === 'zoom' ? 'device flagged.' : 'Orbit.'}
     </Text>
   )
 }
 
-function LandingPage() {
+function CameraController({ phase, flaggedAngle }) {
+  const { camera } = useThree()
+  const targetPos = useRef(new Vector3(0, 0, 5))
+  const currentPos = useRef(new Vector3(0, 0, 5))
 
+  useFrame((state, delta) => {
+    if (phase === 'zoom') {
+      const zoomX = 3 * Math.cos(flaggedAngle + state.clock.elapsedTime)
+      const zoomZ = 3 * Math.sin(flaggedAngle + state.clock.elapsedTime)
+      targetPos.current.set(zoomX * 0.6, 0.5, zoomZ * 0.6 + 2)
+    } else {
+      targetPos.current.set(0, 0, 5)
+    }
+
+    currentPos.current.x = MathUtils.damp(currentPos.current.x, targetPos.current.x, 2, delta)
+    currentPos.current.y = MathUtils.damp(currentPos.current.y, targetPos.current.y, 2, delta)
+    currentPos.current.z = MathUtils.damp(currentPos.current.z, targetPos.current.z, 2, delta)
+
+    camera.position.copy(currentPos.current)
+    camera.lookAt(0, 0, 0)
+  })
+
+  return null
+}
+
+function LandingPage() {
   const [phase, setPhase] = useState('explosion')
   const [flaggedIndex] = useState(Math.floor(Math.random() * 5))
-
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
 
+  const flaggedAngle = (Math.PI * 2 / 5) * flaggedIndex
+
   const handleSubmit = async () => {
     if (!email) return
-
     const { error } = await supabase.from('waitlist').insert([{ email }])
-
     if (!error) setSubmitted(true)
   }
-  
+
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('explosion'), 0)
-    const t2 = setTimeout(() => setPhase('diagonal'), 2000)
-    const t3 = setTimeout(() => setPhase('settle'), 5000)
-    const t4 = setTimeout(() => setPhase('flagged'), 7000)
-    const t5 = setTimeout(() => setPhase('zoom'), 11000)
-    const t6 = setTimeout(() => setPhase('return'), 14000)
-    const t7 = setTimeout(() => setPhase('invite'), 17000)
+    const t1 = setTimeout(() => setPhase('diagonal'), 2000)
+    const t2 = setTimeout(() => setPhase('settle'), 5000)
+    const t3 = setTimeout(() => setPhase('flagged'), 7000)
+    const t4 = setTimeout(() => setPhase('zoom'), 11000)
+    const t5 = setTimeout(() => setPhase('return'), 14000)
+    const t6 = setTimeout(() => setPhase('invite'), 17000)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
@@ -96,40 +125,38 @@ function LandingPage() {
       clearTimeout(t4)
       clearTimeout(t5)
       clearTimeout(t6)
-      clearTimeout(t7)
     }
   }, [])
 
   return (
     <div className="main-section">
-      
-      <div className='canvas-section'>
-
-        <Canvas>
+      <div className="canvas-section">
+        <Canvas camera={{ position: [0, 0, 5] }}>
           <ambientLight intensity={0.3} />
           <pointLight position={[3, 3, 3]} intensity={50} color="#cdcdcd" />
           <Stars />
-          <OrbitText phase={phase}/>
-          <OrbitingDevice angle={0} phase={phase} flaggedIndex={flaggedIndex} index={0}/>
-          <OrbitingDevice angle={Math.PI * 2 / 5} phase={phase} flaggedIndex={flaggedIndex} index={1}/>
-          <OrbitingDevice angle={Math.PI * 4 / 5} phase={phase} flaggedIndex={flaggedIndex} index={2}/>
-          <OrbitingDevice angle={Math.PI * 6 / 5} phase={phase} flaggedIndex={flaggedIndex} index={3}/>
-          <OrbitingDevice angle={Math.PI * 8 / 5} phase={phase} flaggedIndex={flaggedIndex} index={4}/>
+          <OrbitText phase={phase} />
+          <CameraController phase={phase} flaggedAngle={flaggedAngle} />
+          <OrbitingDevice angle={0} phase={phase} flaggedIndex={flaggedIndex} index={0} />
+          <OrbitingDevice angle={Math.PI * 2 / 5} phase={phase} flaggedIndex={flaggedIndex} index={1} />
+          <OrbitingDevice angle={Math.PI * 4 / 5} phase={phase} flaggedIndex={flaggedIndex} index={2} />
+          <OrbitingDevice angle={Math.PI * 6 / 5} phase={phase} flaggedIndex={flaggedIndex} index={3} />
+          <OrbitingDevice angle={Math.PI * 8 / 5} phase={phase} flaggedIndex={flaggedIndex} index={4} />
         </Canvas>
-
       </div>
 
-      <div className='waitlist-section'>
+      <div className="waitlist-section">
         <h2>Know Who's Around You</h2>
-        <p>Orbit. is an app that allows you to have better piece of mind about your surroundings. whether you're hyper-aware or oblivous, Orbit.
+        <p>
+          Orbit. is an app that allows you to have better peace of mind about your surroundings. whether you're hyper-aware or oblivious, Orbit.
           keeps you safe and prevents accidents <em>before</em> they happen. Curious about using the app yourself? Then sign up for our waitlist below...
         </p>
-        <input 
-          placeholder='johndoe@email.com'
+        <input
+          placeholder="johndoe@email.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        {submitted 
+        {submitted
           ? <p>you're on the list.</p>
           : <button onClick={handleSubmit}>Join The Waitlist</button>
         }
