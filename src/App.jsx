@@ -3,6 +3,7 @@ import './App.css'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls, Text, Stars } from '@react-three/drei'
 import { useRef, useState, useEffect } from 'react'
+import { MathUtils } from 'three'
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -15,19 +16,26 @@ function OrbitingDevice({angle, phase, flaggedIndex, index})
 {
   const smallPlanet = useRef()
   const radiusRef = useRef(2)
-  
-  useFrame((state) => {
+  const yRef = useRef(0)
+  const yVelRef = useRef(0)
 
+  useFrame((state, delta) => {
     const isFlag = phase === 'flagged' && index === flaggedIndex
     const target = isFlag ? 3 : 2
 
-    radiusRef.current += (target - radiusRef.current) * 0.05
+    radiusRef.current = MathUtils.damp(radiusRef.current, target, 3, delta)
+
+    const yTarget = phase === 'diagonal' ? Math.sin(angle + state.clock.elapsedTime) * 1.5 : 0
+    yRef.current = MathUtils.damp(yRef.current, yTarget, 3, delta)
 
     smallPlanet.current.position.x = radiusRef.current * Math.cos(angle + state.clock.elapsedTime)
     smallPlanet.current.position.z = radiusRef.current * Math.sin(angle + state.clock.elapsedTime)
+    smallPlanet.current.position.y = yRef.current
 
-    smallPlanet.current.material.color.set(isFlag ? '#ff0000' : '#b1b1b1')
+    const targetColor = isFlag ? '#ff0000' : '#b1b1b1'
+    smallPlanet.current.material.color.set(targetColor)
   })
+
   return (
     <mesh ref={smallPlanet}>
       <sphereGeometry args={[0.1, 16, 16]} />
@@ -74,11 +82,21 @@ function LandingPage() {
   }
   
   useEffect(() => {
-    const t1 = setTimeout(() => setPhase('flagged'), 1500)
-    const t2 = setTimeout(() => setPhase('settle'), 5000)
+    const t1 = setTimeout(() => setPhase('explosion'), 0)
+    const t2 = setTimeout(() => setPhase('diagonal'), 2000)
+    const t3 = setTimeout(() => setPhase('settle'), 5000)
+    const t4 = setTimeout(() => setPhase('flagged'), 7000)
+    const t5 = setTimeout(() => setPhase('zoom'), 11000)
+    const t6 = setTimeout(() => setPhase('return'), 14000)
+    const t7 = setTimeout(() => setPhase('invite'), 17000)
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
+      clearTimeout(t3)
+      clearTimeout(t4)
+      clearTimeout(t5)
+      clearTimeout(t6)
+      clearTimeout(t7)
     }
   }, [])
 
