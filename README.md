@@ -1,5 +1,3 @@
-orbit.-landing
-
 Landing page for Orbit. — a BLE-based proximity safety app for streamers and content creators.
 
 🔗 Live: orbit-landing-fawn.vercel.app
